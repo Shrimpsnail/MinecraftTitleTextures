@@ -2,22 +2,16 @@ import { Canvas, loadImage, ImageData } from "skia-canvas"
 import compress_images from "compress-images"
 import fs from "node:fs"
 
-fs.rmSync("temp", { recursive: true, force: true })
-
 const charMap = {
   asterisk: "*",
   backwardslash: "\\",
   colon: ":",
   creeper: "😳",
-  end: "┣",
   forwardslash: "/",
   greaterthan: ">",
   lessthan: "<",
   openquote: "😩",
-  questionmark: "?",
-  space: " ",
-  spacer: "​",
-  start: "┫"
+  questionmark: "?"
 }
 
 const fonts = JSON.parse(fs.readFileSync("../fonts.json"))
@@ -80,97 +74,31 @@ for (const font of fonts) {
   console.log(`Done ${font.id} characters`)
 
   fs.mkdirSync(`temp/${font.id}/textures`, { recursive: true })
-  fs.mkdirSync(`temp/${font.id}/overlays`, { recursive: true })
   fs.mkdirSync(`temp/${font.id}/thumbnails`, { recursive: true })
 
-  let borderSize
-  if (font.borderless) {
-    borderSize = 0
-  } else {
-    borderSize = 2
-  }
-  const width = font.width - borderSize * 2
-  const height = font.height - borderSize * 2
+  const width = font.width - 4
+  const height = font.height - 4
   const depth = font.ends[0][1]
 
-  let overlayBackground
-  const textures = fs.readdirSync(`../fonts/${font.id}/textures`).map(e => ["textures", e]).concat(fs.readdirSync(`../fonts/${font.id}/overlays`).map(e => ["overlays", e]))
-  for (const file of textures) {
-    if (file[1] === "overlay.png") continue
-
-    const img = await loadImage(`../fonts/${font.id}/${file[0]}/${file[1]}`)
+  for (const file of fs.readdirSync(`../fonts/${font.id}/textures`)) {
+    const img = await loadImage(`../fonts/${font.id}/textures/${file}`)
     
     const canvas = new Canvas(img.width, img.height)
     const context = canvas.getContext("2d")
     context.drawImage(img, 0, 0)
-    canvas.saveAs(`temp/${font.id}/${file[0]}/${file[1]}`)
+    canvas.saveAs(`temp/${font.id}/textures/${file}`)
     
     const m = canvas.width / 1000
 
-    let thumbnail
-    if (font.autoBorder || font.borderless) {
-      if (font.forcedTerminators) {
-        thumbnail = new Canvas(font.width * 3 * m - borderSize * 4 + font.forcedTerminators[4] * 2, font.height * m)
-      } else {
-        thumbnail = new Canvas(font.width * 3 * m - borderSize * 4, font.height * m)
-      }
-    } else {
-      if (font.forcedTerminators) {
-        thumbnail = new Canvas(font.width * 3 * m + borderSize * 4 + font.forcedTerminators[4] * 2, font.height * m)
-      } else {
-        thumbnail = new Canvas(font.width * 3 * m, font.height * m)
-      }
-    }
+    const thumbnail = new Canvas(font.width * 3 * m, font.height * m)
     const ctx = thumbnail.getContext("2d")
-    
-    if (font.autoBorder || font.borderless) {
-      if (font.forcedTerminators) {
-        const terminatorWidth = font.forcedTerminators[4] * m
-        ctx.drawImage(canvas, font.forcedTerminators[0] * m, font.forcedTerminators[1] * m, terminatorWidth, font.forcedTerminators[5] * m, borderSize * m, borderSize * m, terminatorWidth, font.forcedTerminators[5] * m)
-        ctx.drawImage(canvas, width * m + 2 * m, depth * m, width * m, height * m, borderSize * m + terminatorWidth, borderSize * m, width * m, height * m)
-        ctx.drawImage(canvas, width * m * 2 + 2 * 2 * m, depth * m, width * m, height * m, borderSize * m + width * m + terminatorWidth, borderSize * m, width * m, height * m)
-        ctx.drawImage(canvas, width * m * 3 + 2 * 3 * m, depth * m, width * m, height * m, borderSize * m + width * m * 2 + terminatorWidth, borderSize * m, width * m, height * m)
-        ctx.drawImage(canvas, font.forcedTerminators[2] * m, font.forcedTerminators[3] * m, terminatorWidth, font.forcedTerminators[5] * m, borderSize * m + width * m * 3 + terminatorWidth, borderSize * m, terminatorWidth, font.forcedTerminators[5] * m)
-      } else {
-        ctx.drawImage(canvas, width * m + 2 * m, depth * m, width * m, height * m, borderSize * m, borderSize * m, width * m, height * m)
-        ctx.drawImage(canvas, width * m * 2 + 2 * 2 * m, depth * m, width * m, height * m, borderSize * m + width * m, borderSize * m, width * m, height * m)
-        ctx.drawImage(canvas, width * m * 3 + 2 * 3 * m, depth * m, width * m, height * m, borderSize * m + width * m * 2, borderSize * m, width * m, height * m)
-      }
-    } else {
-      if (font.forcedTerminators) {
-        const terminatorWidth = font.forcedTerminators[4] * m
-        ctx.drawImage(canvas, font.forcedTerminators[0] * m, font.forcedTerminators[1] * m, terminatorWidth, font.forcedTerminators[5] * m, borderSize * m, borderSize * m, terminatorWidth, font.forcedTerminators[5] * m)
-        ctx.drawImage(canvas, width * m + 2 * m, depth * m, width * m, height * m, borderSize * m * 3 + terminatorWidth, borderSize * m, width * m, height * m)
-        ctx.drawImage(canvas, width * m * 2 + 2 * 2 * m, depth * m, width * m, height * m, borderSize * 5 * m + width * m + terminatorWidth, borderSize * m, width * m, height * m)
-        ctx.drawImage(canvas, width * m * 3 + 2 * 3 * m, depth * m, width * m, height * m, borderSize * 7 * m + width * m * 2 + terminatorWidth, borderSize * m, width * m, height * m)
-        ctx.drawImage(canvas, font.forcedTerminators[2] * m, font.forcedTerminators[3] * m, terminatorWidth, font.forcedTerminators[5] * m, borderSize * 9 * m + width * m * 3 + terminatorWidth, borderSize * m, terminatorWidth, font.forcedTerminators[5] * m)
-      } else {
-        ctx.drawImage(canvas, width * m + 2 * m, depth * m, width * m, height * m, borderSize * m, borderSize * m, width * m, height * m)
-        ctx.drawImage(canvas, width * m * 2 + 2 * 2 * m, depth * m, width * m, height * m, borderSize * 3 * m + width * m, borderSize * m, width * m, height * m)
-        ctx.drawImage(canvas, width * m * 3 + 2 * 3 * m, depth * m, width * m, height * m, borderSize * 5 * m + width * m * 2, borderSize * m, width * m, height * m)
-      }
-    }
+    ctx.drawImage(canvas, width * m + 2 * m, depth * m, width * m, height * m, 2 * m, 2 * m, width * m, height * m)
+    ctx.drawImage(canvas, width * m * 2 + 4 * m, depth * m, width * m, height * m, 6 * m + width * m, 2 * m, width * m, height * m)
+    ctx.drawImage(canvas, width * m * 3 + 6 * m, depth * m, width * m, height * m, 10 * m + width * m * 2, 2 * m, width * m, height * m)
 
-    if (file[0] === "textures") {
-      if (!font.borderless) outline(thumbnail, 2 * m, context.getImageData(0, font.border * m, 1, 1).data)
-    } else {
-      ctx.globalCompositeOperation = "destination-over"
-      ctx.imageSmoothingEnabled = false
-      ctx.drawImage(overlayBackground, 0, 0, thumbnail.width, thumbnail.height)
-    }
+    outline(thumbnail, 2 * m, context.getImageData(0, font.border * m, 1, 1).data)
 
-    thumbnail.saveAs(`temp/${font.id}/thumbnails/${file[1]}`)
-
-    if (file[1] === "flat.png") {
-      overlayBackground = new Canvas(thumbnail.width, thumbnail.height)
-      const overlayBackgroundCtx = overlayBackground.getContext("2d")
-      overlayBackgroundCtx.drawImage(thumbnail, 0, 0)
-      overlayBackgroundCtx.fillStyle = "rgb(0,0,0,0.25)"
-      overlayBackgroundCtx.globalCompositeOperation = "destination-in"
-      overlayBackgroundCtx.fillRect(0, 0, thumbnail.width, thumbnail.height)
-      overlayBackgroundCtx.globalCompositeOperation = "source-over"
-      overlayBackground.saveAs(`temp/${font.id}/thumbnails/none.png`)
-    }
+    thumbnail.saveAs(`temp/${font.id}/thumbnails/${file}`)
   }
 }
 
@@ -186,5 +114,6 @@ compress_images("temp/**/*.png", "../fonts/", {
   { svg: { engine: false, command: false } },
   { gif: { engine: false, command: false } },
 (err, comp, stat) => {
+  console.log(stat)
   if (fs.existsSync(stat.path_out_new + ".bak")) fs.unlinkSync(stat.path_out_new + ".bak")
 })
